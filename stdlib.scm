@@ -1,5 +1,3 @@
-; Nicholas Quirk
-
 (define (caar pair) (car (car pair)))
 (define (cadr pair) (car (cdr pair)))
 (define (cdar pair) (cdr (car pair)))
@@ -62,7 +60,7 @@
 (define (list . objs) objs)
 (define (length lst) (fold (lambda (x y) (+ x 1)) 0 lst))
 (define (append lst . lsts) (foldr (flip (curry foldr cons)) lst lsts))
-(define (reverse lst) (fold (flip coms) '() lst))
+(define (reverse lst) (fold (flip cons) '() lst))
 (define (mem-helper pred op) (lambda (acc next) (if (and (not acc) (pred (op next))) next acc)))
 (define (memq obj lst) (fold (mem-helper (curry eq? obj) id) #f lst))
 (define (memv obj lst) (fold (mem-helper (curry eqv? obj) id) #f lst))
@@ -78,3 +76,21 @@
 (define (or . lst) (fold || #f lst))
 (define (any? pred . lst) (apply or (map pred lst)))
 (define (every? pred . lst) (apply and (map pred lst)))
+
+(define (inc x) (+ x 1))
+(define (dec x) (- x 1))
+(define (negative x) (* (dec 0) x))
+(define inc-curry (curry + 1))
+(define dec-curry (curry - 1))
+(define (head x) (car x))
+(define (rest x) (cdr x))
+
+(define (range x y)
+	(if (< x y)
+		(cons x (range (inc x) y))
+		'()))
+
+(define (take x y)
+	(if (> x 0)
+		(cons (head y) (take (dec x) (rest y)))
+		'()))
