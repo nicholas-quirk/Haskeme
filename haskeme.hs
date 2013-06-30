@@ -1,4 +1,5 @@
 -- Nicholas Quirk
+-- Compile: ghc -package parsec -fglasgow-exts -o haskeme .\haskeme.hs
 
 module Main where
 
@@ -81,57 +82,14 @@ parseAtom :: Parser LispVal
 parseAtom = do first <- letter <|> symbol
                rest <- many (letter <|> digit <|> symbol)
                let atom = [first] ++ rest
-               return $ case atom of 
-                          "#t" -> Bool True
-                          "#f" -> Bool False
-                          otherwise -> Atom atom
+               return $ case atom of {
+                          "#t" -> Bool True;
+                          "#f" -> Bool False;
+                          otherwise -> Atom atom;
+						}
 
 parseNumber :: Parser LispVal
 parseNumber = many1 digit >>= return . Number . read
---parseNumber = do {
---    num <- parseDigital1 <|> parseDigital2 <|> parseHex <|> parseOct <|> parseBin;
---    return $ num;
---}
-
---parseDigital1 :: Parser LispVal;
---parseDigital1 = do {
---    x <- many1 digit;
---    (return . Number . read) x;
---}
-
---parseDigital2 :: Parser LispVal
---parseDigital2 = do {
---    try $ string "#d";
---    x <- many1 digit;
---    (return . Number . read) x;
---}
-
---parseHex :: Parser LispVal
---parseHex = do {
---    try $ string "#x";
---    x <- many1 hexDigit;
---    return $ Number (hex2dig x);
---}
-
---parseOct :: Parser LispVal
---parseOct = do {
---    try $ string "#o";
---    x <- many1 octDigit;
---    return $ Number (oct2dig x);
---}
-
---parseBin :: Parser LispVal
---parseBin = do {
---    try $ string "#b";
---    x <- many1 (oneOf "10");
---    return $ Number (bin2dig x);
---}
-
---oct2dig x = fst $ readOct x !! 0
---hex2dig x = fst $ readHex x !! 0
---bin2dig = bin2dig' 0
---bin2dig' digint "" = digint
---bin2dig' digint (x : xs) = let old = 2 * digint + (if x == '0' then 0 else 1) in bin2dig' old xs
 
 parseList :: Parser LispVal
 parseList = liftM List $ sepBy parseExpr spaces
@@ -185,10 +143,10 @@ showVal (DottedList head tail) = "(" ++ unwordsList head ++ " . " ++ showVal tai
 showVal (Port _) = "<IO port>"
 showVal (IOFunc _) = "<IO primitive>"
 showVal (PrimitiveFunc _) = "<primitive>"
---showVal (Func {params = args, vararg = varargs, body = body, closure = env}) = "(lambda (" ++ unwords (map show args) ++ (case varargs of { Nothing -> ""; Just arg -> " . " ++ arg; }) ++ ") ...)"
-
--- Display the entire function definition. This allows for the 'source' function to be called within the lisp interpreter.
-showVal (Func {params = args, vararg = varargs, body = body, closure = env}) = "(lambda (" ++ unwords (map show args) ++ (case varargs of { Nothing -> ""; Just arg -> " . " ++ arg; }) ++ ") " ++ unwordsList body ++ ")"
+showVal (Func {params = args, vararg = varargs, body = body, closure = env}) = "(lambda (" ++
+	unwords (map show args) ++ 
+	(case varargs of { Nothing -> ""; Just arg -> " . " ++ arg; }) ++ 
+	") " ++ unwordsList body ++ ")"
 
 unwordsList :: [LispVal] -> String
 unwordsList = unwords . map showVal
@@ -225,9 +183,10 @@ apply (Func params varargs body closure) args =
     where remainingArgs = drop (length params) args
           num = toInteger . length
           evalBody env = liftM last $ mapM (eval env) body
-          bindVarArgs arg env = case arg of
-			Just argName -> liftIO $ bindVars env [(argName, List $ remainingArgs)]
-			Nothing -> return env
+          bindVarArgs arg env = case arg of {
+			Just argName -> liftIO $ bindVars env [(argName, List $ remainingArgs)];
+			Nothing -> return env;
+		}
 
 applyProc :: [LispVal] -> IOThrowsError LispVal
 applyProc [func, List args] = apply func args
@@ -258,7 +217,30 @@ readAll :: [LispVal] -> IOThrowsError LispVal
 readAll [String filename] = liftM List $ load filename
 
 primitives :: [(String, [LispVal] -> ThrowsError LispVal)]
-primitives = [("+", numericBinop (+)), ("-", numericBinop(-)), ("*", numericBinop(*)), ("/", numericBinop div), ("mod", numericBinop mod), ("quotient", numericBinop quot), ("remainder", numericBinop rem), ("=", numBoolBinop (==)), ("<", numBoolBinop (<)), (">", numBoolBinop (>)), ("/=", numBoolBinop (/=)), (">=", numBoolBinop (>=)), ("<=", numBoolBinop (<=)), ("&&", boolBoolBinop (&&)), ("||", boolBoolBinop (||)), ("string=?", strBoolBinop (==)), ("string?", strBoolBinop (>)), ("string<=?", strBoolBinop (<=)), ("string>=?", strBoolBinop (>=)), ("car", car), ("cdr", cdr), ("cons", cons), ("eq?", eqv), ("eqv?", eqv), ("equals?", equal)]
+primitives = [
+	("+", numericBinop (+)),
+	("-", numericBinop(-)),
+	("*", numericBinop(*)),
+	("/", numericBinop div),
+	("mod", numericBinop mod),
+	("quotient", numericBinop quot),
+	("remainder", numericBinop rem),
+	("=", numBoolBinop (==)),
+	("<", numBoolBinop (<)),
+	(">", numBoolBinop (>)),
+	("/=", numBoolBinop (/=)),
+	(">=", numBoolBinop (>=)),
+	("<=", numBoolBinop (<=)),
+	("&&", boolBoolBinop (&&)),
+	("||", boolBoolBinop (||)),
+	("string=?", strBoolBinop (==)),
+	("string?", strBoolBinop (>)),
+	("string<=?", strBoolBinop (<=)),
+	("string>=?", strBoolBinop (>=)),
+	("car", car), ("cdr", cdr),
+	("cons", cons), ("eq?", eqv),
+	("eqv?", eqv),
+	("equals?", equal)]
 
 primitiveBindings :: IO Env
 primitiveBindings = nullEnv >>= (flip bindVars $ map (makeFunc IOFunc) ioPrimitives ++ map (makeFunc PrimitiveFunc) primitives)
